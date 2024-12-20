@@ -136,7 +136,7 @@ class LiveSearchModal extends Modal {
 
 		const { contentEl } = this;
 
-		const titleEl = contentEl.createEl('h2', { text: 'Live Search' });
+		const titleEl = contentEl.createEl('h2', { text: 'Simple Search' });
 		titleEl.addClass('simple-search-title');
 
 		// Input field
@@ -146,6 +146,10 @@ class LiveSearchModal extends Modal {
 			placeholder: 'Type to search...'
 		});
 		this.inputEl.addClass('simple-search-input');
+
+		setTimeout(() => {
+			this.inputEl.focus();
+		}, 50);
 
 		// Results container
 		this.resultsContainer = contentEl.createDiv({ cls: 'simple-search-results' });
