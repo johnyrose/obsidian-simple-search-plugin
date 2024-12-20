@@ -226,7 +226,7 @@ class LiveSearchModal extends Modal {
 					this.clearResults();
 					foundAnyResult = true;
 				}
-				this.appendResultToUI(result);
+				this.appendResultToUI(result, query);
 			},
 			signal
 		);
@@ -241,29 +241,24 @@ class LiveSearchModal extends Modal {
 		this.resultsContainer.empty();
 	}
 
-	private appendResultToUI(result: SearchResult) {
-		// Each search result is one note.
-		// We'll create a block for that note that highlights on hover and is clickable.
+	private appendResultToUI(result: SearchResult, query: string) {
 		const fileSection = this.resultsContainer.createDiv({ cls: 'simple-search-result' });
 
-		// On click: open the file and close the modal
 		fileSection.addEventListener('click', async () => {
 			await this.app.workspace.getLeaf().openFile(result.file);
 			this.close();
 		});
 
-		// File title
-		const fileTitle = fileSection.createEl('div', { cls: 'simple-search-file-title', text: result.file.path });
+		const highlightedName = createHighlightedSnippet(result.file.path, query);
+		const fileTitle = fileSection.createEl('div', { cls: 'simple-search-file-title' });
+		fileTitle.innerHTML = highlightedName;
 
 		if (result.matchingLines.length > 0) {
 			const ul = fileSection.createEl('ul', { cls: 'search-results-list' });
 			result.matchingLines.forEach(line => {
 				const li = ul.createEl('li');
-				// Insert snippet with highlighting
 				li.innerHTML = line;
 			});
-		} else {
-			fileSection.createEl('p', { text: '(Matched filename)' });
 		}
 	}
 }
