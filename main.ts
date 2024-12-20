@@ -16,6 +16,11 @@ export default class SimpleSearchPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 
+		// Add a ribbon icon on the left side (using "search" icon)
+		this.addRibbonIcon('search', 'Open Live Search', () => {
+			new LiveSearchModal(this.app, this.settings.defaultSearchTerm).open();
+		});
+
 		this.addCommand({
 			id: 'simple-search-open',
 			name: 'Live Search Entire Vault',
@@ -38,11 +43,9 @@ export default class SimpleSearchPlugin extends Plugin {
 
 /** 
  * Utility Functions 
- * We now ensure each whitespace character is replaced by a single underscore 
- * to maintain exact indexing between original and cleaned strings.
  */
 function prepareSearchTerm(term: string): string {
-	// Replace each whitespace char with underscore, preserving string length
+	// Replace each whitespace char with underscore for consistent indexing
 	return term.toLowerCase().replace(/\s/g, '_');
 }
 
@@ -57,8 +60,7 @@ interface SearchResult {
 }
 
 /**
- * Create a highlighted snippet around the matched term.
- * We know that "cleanedLine" and "cleanedSearchTerm" have the same length indexing due to 1:1 char mapping.
+ * Create a snippet around the matched term with highlight.
  */
 function createHighlightedSnippet(line: string, rawTerm: string): string {
 	const cleanedLine = prepareSearchTerm(line);
@@ -66,17 +68,13 @@ function createHighlightedSnippet(line: string, rawTerm: string): string {
 
 	const index = cleanedLine.indexOf(cleanedSearchTerm);
 	if (index === -1) {
-		// No match found (should not happen since we call this only on matches)
 		return line;
 	}
 
-	// Calculate snippet boundaries (50 chars before and after)
 	const snippetStart = Math.max(0, index - 50);
 	const snippetEnd = Math.min(line.length, index + rawTerm.length + 50);
 
-	let snippet = line.substring(snippetStart, snippetEnd);
-
-	// Calculate relative index within snippet
+	const snippet = line.substring(snippetStart, snippetEnd);
 	const relativeIndex = index - snippetStart;
 	const beforeMatch = snippet.substring(0, relativeIndex);
 	const matchPortion = snippet.substring(relativeIndex, relativeIndex + rawTerm.length);
@@ -123,8 +121,8 @@ async function performLiveSearch(
 }
 
 /**
- * Modal that allows live searching.
- * We now fix the modal height and let the results scroll.
+ * Modal for live searching.
+ * Each result (note) highlights on hover, and clicking it will open the note and close the modal.
  */
 class LiveSearchModal extends Modal {
 	private inputEl: HTMLInputElement;
@@ -139,7 +137,7 @@ class LiveSearchModal extends Modal {
 	}
 
 	onOpen() {
-		this.modalEl.addClass('simple-search-modal'); // Add a class for styling
+		this.modalEl.addClass('simple-search-modal');
 
 		const { contentEl } = this;
 
@@ -158,10 +156,10 @@ class LiveSearchModal extends Modal {
 		this.resultsContainer = contentEl.createDiv({ cls: 'simple-search-results' });
 		this.resultsContainer.createEl('p', { text: 'Start typing to search...' });
 
-		// Event: on input change, debounce search
+		// Debounce search on input
 		this.inputEl.addEventListener('input', () => this.onInputChanged());
-		
-		// Trigger initial search if defaultValue is not empty
+
+		// If default value is not empty, start searching
 		if (this.lastQuery.trim() !== '') {
 			this.triggerSearchWithDebounce();
 		}
@@ -191,7 +189,6 @@ class LiveSearchModal extends Modal {
 			return;
 		}
 
-		// Debounce: start searching after 200ms of no typing
 		this.debounceTimer = window.setTimeout(() => {
 			this.triggerSearch();
 		}, 200);
@@ -245,20 +242,25 @@ class LiveSearchModal extends Modal {
 	}
 
 	private appendResultToUI(result: SearchResult) {
+		// Each search result is one note.
+		// We'll create a block for that note that highlights on hover and is clickable.
 		const fileSection = this.resultsContainer.createDiv({ cls: 'simple-search-result' });
 
-		// File title - clickable
-		const fileTitle = fileSection.createEl('h3', { text: result.file.path, cls: 'clickable-file-link' });
-		fileTitle.addClass('simple-search-file-title');
-		fileTitle.addEventListener('click', () => {
-			this.app.workspace.getLeaf().openFile(result.file);
+		// On click: open the file and close the modal
+		fileSection.addEventListener('click', async () => {
+			await this.app.workspace.getLeaf().openFile(result.file);
+			this.close();
 		});
+
+		// File title
+		const fileTitle = fileSection.createEl('div', { cls: 'simple-search-file-title', text: result.file.path });
 
 		if (result.matchingLines.length > 0) {
 			const ul = fileSection.createEl('ul', { cls: 'search-results-list' });
 			result.matchingLines.forEach(line => {
 				const li = ul.createEl('li');
-				li.innerHTML = line; // Insert snippet with highlighting
+				// Insert snippet with highlighting
+				li.innerHTML = line;
 			});
 		} else {
 			fileSection.createEl('p', { text: '(Matched filename)' });

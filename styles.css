@@ -23,13 +23,29 @@
 
 .simple-search-result {
     margin-bottom: 10px;
+    padding: 5px;
+    border-radius: 6px; /* Adjusted to make it slightly more rectangular */
+    /* transition: outline, border-radius 0.2s; Smooth transitions for hover effect */
+    cursor: pointer;
+}
+
+.simple-search-result:hover {
+    outline: 2px solid var(--interactive-accent-hover); /* Highlight with an outline */
+    outline-offset: 2px; /* Adds a gap between the outline and the element */
+    border-radius: 4px; /* Slightly sharper corners on hover */
 }
 
 .simple-search-file-title {
-    cursor: pointer;
-    color: var(--text-accent);
+    font-weight: bold;
+    margin-bottom: 5px;
 }
 
-.simple-search-file-title:hover {
-    text-decoration: underline;
+.search-results-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.search-results-list li {
+    margin-bottom: 5px;
 }
