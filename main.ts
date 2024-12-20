@@ -1,13 +1,11 @@
 import { 
-	App, Plugin, PluginSettingTab, Setting, TFile, Modal
+	App, Plugin, TFile, Modal
 } from 'obsidian';
 
 interface SimpleSearchSettings {
-	defaultSearchTerm: string;
 }
 
 const DEFAULT_SETTINGS: SimpleSearchSettings = {
-	defaultSearchTerm: ''
 };
 
 export default class SimpleSearchPlugin extends Plugin {
@@ -17,19 +15,17 @@ export default class SimpleSearchPlugin extends Plugin {
 		await this.loadSettings();
 
 		// Add a ribbon icon on the left side (using "search" icon)
-		this.addRibbonIcon('search', 'Open Live Search', () => {
-			new LiveSearchModal(this.app, this.settings.defaultSearchTerm).open();
+		this.addRibbonIcon('search', 'Simple Search', () => {
+			new LiveSearchModal(this.app).open();
 		});
 
 		this.addCommand({
 			id: 'simple-search-open',
-			name: 'Live Search Entire Vault',
+			name: 'Simple Search on the entire vault',
 			callback: () => {
-				new LiveSearchModal(this.app, this.settings.defaultSearchTerm).open();
+				new LiveSearchModal(this.app).open();
 			}
 		});
-
-		this.addSettingTab(new SimpleSearchSettingTab(this.app, this));
 	}
 
 	async loadSettings() {
@@ -131,9 +127,8 @@ class LiveSearchModal extends Modal {
 	private currentSearchController: AbortController | null = null;
 	private lastQuery: string = '';
 
-	constructor(app: App, defaultValue: string) {
+	constructor(app: App) {
 		super(app);
-		this.lastQuery = defaultValue;
 	}
 
 	onOpen() {
@@ -260,32 +255,5 @@ class LiveSearchModal extends Modal {
 				li.innerHTML = line;
 			});
 		}
-	}
-}
-
-class SimpleSearchSettingTab extends PluginSettingTab {
-	plugin: SimpleSearchPlugin;
-
-	constructor(app: App, plugin: SimpleSearchPlugin) {
-		super(app, plugin);
-		this.plugin = plugin;
-	}
-
-	display(): void {
-		const { containerEl } = this;
-
-		containerEl.empty();
-		containerEl.createEl('h2', { text: 'Simple Search Settings' });
-
-		new Setting(containerEl)
-			.setName('Default Search Term')
-			.setDesc('The default search term that appears when opening the search modal.')
-			.addText(text => text
-				.setPlaceholder('Enter default search term')
-				.setValue(this.plugin.settings.defaultSearchTerm)
-				.onChange(async (value) => {
-					this.plugin.settings.defaultSearchTerm = value;
-					await this.plugin.saveSettings();
-				}));
 	}
 }
