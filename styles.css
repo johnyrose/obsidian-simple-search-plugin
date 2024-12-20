@@ -1,8 +1,35 @@
-/*
+.simple-search-modal .modal-content {
+    display: flex;
+    flex-direction: column;
+    height: 500px; /* Fixed height for the entire modal */
+}
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+.simple-search-modal h2 {
+    flex: 0 0 auto;
+    margin-bottom: 10px;
+}
 
-If your plugin does not need CSS, delete this file.
+.simple-search-modal .simple-search-input {
+    flex: 0 0 auto;
+    margin-bottom: 10px;
+}
 
-*/
+.simple-search-modal .simple-search-results {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    border: 1px solid var(--background-modifier-border);
+    padding: 5px;
+}
+
+.simple-search-result {
+    margin-bottom: 10px;
+}
+
+.simple-search-file-title {
+    cursor: pointer;
+    color: var(--text-accent);
+}
+
+.simple-search-file-title:hover {
+    text-decoration: underline;
+}

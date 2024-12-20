@@ -1,5 +1,5 @@
 import { 
-	App, Plugin, PluginSettingTab, Setting, TFile, Modal, Notice
+	App, Plugin, PluginSettingTab, Setting, TFile, Modal
 } from 'obsidian';
 
 interface SimpleSearchSettings {
@@ -27,10 +27,6 @@ export default class SimpleSearchPlugin extends Plugin {
 		this.addSettingTab(new SimpleSearchSettingTab(this.app, this));
 	}
 
-	onunload() {
-		// Cleanup if needed
-	}
-
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
 	}
@@ -42,9 +38,12 @@ export default class SimpleSearchPlugin extends Plugin {
 
 /** 
  * Utility Functions 
+ * We now ensure each whitespace character is replaced by a single underscore 
+ * to maintain exact indexing between original and cleaned strings.
  */
 function prepareSearchTerm(term: string): string {
-	return term.toLowerCase().replace(/\s+/g, '_');
+	// Replace each whitespace char with underscore, preserving string length
+	return term.toLowerCase().replace(/\s/g, '_');
 }
 
 function matchesSearchTerm(text: string, searchTerm: string): boolean {
@@ -58,24 +57,47 @@ interface SearchResult {
 }
 
 /**
- * Finds all lines in `content` that match `searchTerm`.
+ * Create a highlighted snippet around the matched term.
+ * We know that "cleanedLine" and "cleanedSearchTerm" have the same length indexing due to 1:1 char mapping.
  */
-function findMatchingLines(content: string, searchTerm: string): string[] {
+function createHighlightedSnippet(line: string, rawTerm: string): string {
+	const cleanedLine = prepareSearchTerm(line);
+	const cleanedSearchTerm = prepareSearchTerm(rawTerm);
+
+	const index = cleanedLine.indexOf(cleanedSearchTerm);
+	if (index === -1) {
+		// No match found (should not happen since we call this only on matches)
+		return line;
+	}
+
+	// Calculate snippet boundaries (50 chars before and after)
+	const snippetStart = Math.max(0, index - 50);
+	const snippetEnd = Math.min(line.length, index + rawTerm.length + 50);
+
+	let snippet = line.substring(snippetStart, snippetEnd);
+
+	// Calculate relative index within snippet
+	const relativeIndex = index - snippetStart;
+	const beforeMatch = snippet.substring(0, relativeIndex);
+	const matchPortion = snippet.substring(relativeIndex, relativeIndex + rawTerm.length);
+	const afterMatch = snippet.substring(relativeIndex + rawTerm.length);
+
+	const highlightedSnippet = beforeMatch + '<strong>' + matchPortion + '</strong>' + afterMatch;
+	return highlightedSnippet;
+}
+
+function findMatchingLines(content: string, rawTerm: string): string[] {
+	const searchTerm = prepareSearchTerm(rawTerm);
 	const lines = content.split('\n');
 	const matches: string[] = [];
 	for (const line of lines) {
 		if (matchesSearchTerm(line, searchTerm)) {
-			matches.push(line);
+			matches.push(createHighlightedSnippet(line, rawTerm));
 		}
 	}
 	return matches;
 }
 
-/**
- * Perform a live search for `rawTerm` across all .md files.
- * As soon as a file is processed, this function calls `onResult` to report matches.
- * If `signal` is aborted, the search stops immediately.
- */
 async function performLiveSearch(
 	app: App, 
 	rawTerm: string, 
@@ -87,13 +109,12 @@ async function performLiveSearch(
 
 	const files = app.vault.getMarkdownFiles();
 	for (const file of files) {
-		if (signal.aborted) return; // Stop if aborted
-		const fileName = file.name;
+		if (signal.aborted) return; 
 		const fileContent = await app.vault.read(file);
-		if (signal.aborted) return; // Check again after async operation
+		if (signal.aborted) return; 
 
-		const fileNameMatches = matchesSearchTerm(fileName, searchTerm);
-		const matchingLines = findMatchingLines(fileContent, searchTerm);
+		const fileNameMatches = matchesSearchTerm(file.name, searchTerm);
+		const matchingLines = findMatchingLines(fileContent, rawTerm);
 
 		if (fileNameMatches || matchingLines.length > 0) {
 			onResult({ file, matchingLines });
@@ -103,6 +124,7 @@ async function performLiveSearch(
 
 /**
  * Modal that allows live searching.
+ * We now fix the modal height and let the results scroll.
  */
 class LiveSearchModal extends Modal {
 	private inputEl: HTMLInputElement;
@@ -117,9 +139,12 @@ class LiveSearchModal extends Modal {
 	}
 
 	onOpen() {
+		this.modalEl.addClass('simple-search-modal'); // Add a class for styling
+
 		const { contentEl } = this;
 
-		contentEl.createEl('h2', { text: 'Live Search' });
+		const titleEl = contentEl.createEl('h2', { text: 'Live Search' });
+		titleEl.addClass('simple-search-title');
 
 		// Input field
 		this.inputEl = contentEl.createEl('input', {
@@ -155,7 +180,6 @@ class LiveSearchModal extends Modal {
 			window.clearTimeout(this.debounceTimer);
 		}
 
-		// If user cleared the input, reset UI
 		const query = this.inputEl.value.trim();
 		if (query === '') {
 			this.clearResults();
@@ -194,7 +218,6 @@ class LiveSearchModal extends Modal {
 		this.currentSearchController = new AbortController();
 		const signal = this.currentSearchController.signal;
 
-		// Store found results to update incrementally
 		let foundAnyResult = false;
 
 		await performLiveSearch(
@@ -202,12 +225,10 @@ class LiveSearchModal extends Modal {
 			query, 
 			(result) => {
 				if (signal.aborted) return;
-				// On each result found, update the UI incrementally
 				if (!foundAnyResult) {
 					this.clearResults();
 					foundAnyResult = true;
 				}
-
 				this.appendResultToUI(result);
 			},
 			signal
@@ -225,12 +246,19 @@ class LiveSearchModal extends Modal {
 
 	private appendResultToUI(result: SearchResult) {
 		const fileSection = this.resultsContainer.createDiv({ cls: 'simple-search-result' });
-		fileSection.createEl('h3', { text: result.file.path });
+
+		// File title - clickable
+		const fileTitle = fileSection.createEl('h3', { text: result.file.path, cls: 'clickable-file-link' });
+		fileTitle.addClass('simple-search-file-title');
+		fileTitle.addEventListener('click', () => {
+			this.app.workspace.getLeaf().openFile(result.file);
+		});
 
 		if (result.matchingLines.length > 0) {
-			const ul = fileSection.createEl('ul');
+			const ul = fileSection.createEl('ul', { cls: 'search-results-list' });
 			result.matchingLines.forEach(line => {
-				ul.createEl('li', { text: line });
+				const li = ul.createEl('li');
+				li.innerHTML = line; // Insert snippet with highlighting
 			});
 		} else {
 			fileSection.createEl('p', { text: '(Matched filename)' });
@@ -238,9 +266,6 @@ class LiveSearchModal extends Modal {
 	}
 }
 
-/**
- * Settings tab for the plugin.
- */
 class SimpleSearchSettingTab extends PluginSettingTab {
 	plugin: SimpleSearchPlugin;
 
