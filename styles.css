@@ -1,17 +1,28 @@
+.simple-search-modal {
+    position: relative;
+}
+
 .simple-search-modal .modal-content {
     display: flex;
     flex-direction: column;
-    height: 500px; /* Fixed height for the entire modal */
+    height: 500px;
 }
 
-.simple-search-modal h2 {
-    flex: 0 0 auto;
-    margin-bottom: 10px;
+.simple-search-modal .simple-search-title {
+    position: absolute;
+    top: 12px;  /* Adjust this value to align with the X button */
+    left: 15px;
+    margin: 0;
+    padding: 0;
+    font-size: var(--font-ui-medium);
+    font-weight: var(--font-medium);
+    line-height: 1;
 }
 
 .simple-search-modal .simple-search-input {
-    flex: 0 0 auto;
+    margin-top: 25px; /* Reduced space below the title */
     margin-bottom: 10px;
+    width: 100%;
 }
 
 .simple-search-modal .simple-search-results {
@@ -24,15 +35,14 @@
 .simple-search-result {
     margin-bottom: 10px;
     padding: 5px;
-    border-radius: 6px; /* Adjusted to make it slightly more rectangular */
-    /* transition: outline, border-radius 0.2s; Smooth transitions for hover effect */
+    border-radius: 6px;
     cursor: pointer;
 }
 
 .simple-search-result:hover {
-    outline: 2px solid var(--interactive-accent-hover); /* Highlight with an outline */
-    outline-offset: 2px; /* Adds a gap between the outline and the element */
-    border-radius: 4px; /* Slightly sharper corners on hover */
+    outline: 2px solid var(--interactive-accent-hover);
+    outline-offset: 2px;
+    border-radius: 4px;
 }
 
 .simple-search-file-title {
