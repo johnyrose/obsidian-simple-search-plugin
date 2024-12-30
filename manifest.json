@@ -4,8 +4,7 @@
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
 	"description": "Allows a simple search of text across the entire vault",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
+	"author": "Jonathan Rosenboim",
+	"authorUrl": "https://github.com/johnyrose",
 	"isDesktopOnly": false
 }
